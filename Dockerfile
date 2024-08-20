@@ -124,7 +124,6 @@ WORKDIR /opt/cartesi/dapp
 COPY --from=build-stage /opt/build/dapp .
 COPY --chmod=755 skel/cartesi-init /usr/sbin/cartesi-init
 COPY --chmod=755 skel/bounty-run /usr/bin/bounty-run
-COPY --chmod=644 tests/bounties/**/*-bounty_riscv64.tar.xz /bounties/examples
 
 ENTRYPOINT ["rollup-init"]
 CMD ["/opt/cartesi/dapp/dapp"]
