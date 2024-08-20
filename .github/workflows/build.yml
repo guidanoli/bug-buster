@@ -5,18 +5,19 @@ on:
     tags:
       - 'v*'
 
+env:
+  PNPM_VERSION: 9
+  NODE_VERSION: 18
+  CARTESI_MACHINE_IMAGE_NAME: bug-buster-machine
+  CARTESI_NODE_IMAGE_NAME: bug-buster-node
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
-    env:
-      PNPM_VERSION: 9
-      NODE_VERSION: 18
-      CARTESI_MACHINE_IMAGE_NAME: bug-buster-machine
-      CARTESI_NODE_IMAGE_NAME: bug-buster-node
-      REGISTRY: ghcr.io/${{ github.repository_owner }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -48,12 +49,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build machine image and push it to GitHub Container Registry
+      - name: Build machine image
         id: build_machine
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          load: true
           builder: ${{ steps.setup_buildx.outputs.name }}
           tags: ${{ steps.extract_metadata.outputs.tags }}
           labels: ${{ steps.extract_metadata.outputs.labels }}
@@ -77,8 +78,7 @@ jobs:
 
       - name: Build Cartesi Machine image
         run: |
-          pnpm exec cartesi build --from-image \
-            "$(echo ${{ steps.build_machine.outputs.digest }} | sed 's/^[^:]*://')"
+          pnpm exec cartesi build --from-image "${{ steps.build_machine.outputs.imageid }}"
 
       - name: Build Cartesi Node image
         id: build_node
@@ -92,6 +92,10 @@ jobs:
             jq -r '.tags[]' | \
             sed "s/${{ env.CARTESI_MACHINE_IMAGE_NAME }}/${{ env.CARTESI_NODE_IMAGE_NAME }}/" | \
             xargs -n1 docker image tag "${{ steps.build_node.outputs.image }}"
+
+      - name: Push Cartesi Machine image
+        run: |
+          docker image push --all-tags "${{ env.REGISTRY }}/${{ env.CARTESI_MACHINE_IMAGE_NAME }}"
 
       - name: Push Cartesi Node image
         run: |
